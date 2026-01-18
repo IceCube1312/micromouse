@@ -14,6 +14,9 @@ int TARGET_COL=7;
 int START_ROW=0;
 int START_COL=0;
 char START_DIRECTION='n';
+int CURRENT_ROW;
+int CURRENT_COL;
+char CURRENT_DIRECTION;
 
 typedef struct cell{
 	int DIST;
@@ -23,43 +26,6 @@ typedef struct cell{
 	bool EAST_WALL;
 }CELL;
 
-/*
-typedef struct queue{
-	int ROW;
-	int COL;
-	struct queue* next;
-}QUEUE;
-
-
-//adding element to the last
-void enqueue(QUEUE** head,QUEUE** tail,int row, int col){
-	QUEUE* new=malloc(sizeof(QUEUE));
-	new->next=NULL;
-	new->ROW=row;
-	new->COL=col;
-	if(*head==NULL){
-		(*head)=new;
-		(*tail)=new;
-	}
-	else{
-		(*tail)->next=new;
-		(*tail)=new;
-	}
-}
-
-//removing first element
-void dequeue(QUEUE** head, QUEUE** tail){
-	if(*head==NULL){
-		return;
-	}
-	QUEUE* temp=*head;
-	(*head)=(*head)->next;
-	if(*head==NULL){
-		*tail=NULL;
-	}
-	free(temp);
-}
-*/
 //will use static queues instead of linked lists because something something heap memeory and gemini said so
 typedef struct element{
 	int row;
@@ -73,6 +39,20 @@ typedef struct queue{
 	int size;
 }QUEUE;
 
+void position_MAZE_init(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH]){
+	CURRENT_ROW=START_ROW;
+	CURRENT_COL=START_COL;
+	CURRENT_DIRECTION=START_DIRECTION;
+        for(int i=0; i<MAZE_HEIGHT; i++){
+               for(int j=0; j<MAZE_WIDTH; j++){
+                      MAZE[i][j].NORTH_WALL = false;
+                      MAZE[i][j].SOUTH_WALL = false;
+                      MAZE[i][j].WEST_WALL = false;
+                      MAZE[i][j].EAST_WALL = false;
+               }
+        }
+}
+
 void queue_init(QUEUE* queue){
 	queue->head=0;
 	queue->tail=0;
@@ -83,8 +63,8 @@ void enqueue(QUEUE* queue,int r, int c){
 	if(queue->size==MAX_SIZE){
 		return;
 	}
-	queue->ELEMENT[tail].row=r;
-	queue->ELEMENT[tail].col=c;
+	queue->array[queue->tail].row=r;
+	queue->array[queue->tail].col=c;
 
 	queue->tail = (queue-> tail+1) % MAX_SIZE;
 	queue->size ++;
@@ -95,12 +75,52 @@ void dequeue(QUEUE* queue){
 		return;
 	}
 	queue->head=(queue->head+1)%MAX_SIZE;
+	queue->size--;
 }
 
-
-
 void floodfill(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH]){
+	QUEUE queue;
+	queue_init(&queue);
+	MAZE[TARGET_ROW][TARGET_COL].DIST=0;
+        for(int i=0;i<MAZE_HEIGHT;i++){
+                for(int j=0;j<MAZE_WIDTH;j++){
+                        if((i==TARGET_ROW)&&(j==TARGET_COL)){   //assigning inf to everything else not visited
+                                continue;
+                        }
+                        MAZE[i][j].DIST=INF;
+                }
+        }
+	int r;
+	int c;
+	enqueue(&queue,TARGET_ROW,TARGET_COL);
+        while(true){
+		r=queue.array[queue.head].row;
+		c=queue.array[queue.head].col;
+                if(queue.size!=0){
+                        assert(MAZE[r][c].DIST!=INF);
+                        if((r<MAZE_HEIGHT-1)&&(!MAZE[r][c].NORTH_WALL)&&(MAZE[r+1][c].DIST==INF) ){
+                                enqueue(&queue,r+1,c);
+                                MAZE[r+1][c].DIST=MAZE[r][c].DIST+1 ;
+                        }
+                        if((r>0)&&(!MAZE[r][c].SOUTH_WALL)&&(MAZE[r-1][c].DIST==INF) ){
+                                enqueue(&queue,r-1,c);
+                                MAZE[r-1][c].DIST=MAZE[r][c].DIST+1 ;
+                        }
+                        if((c<MAZE_WIDTH-1)&&(!MAZE[r][c].EAST_WALL)&&(MAZE[r][c+1].DIST==INF) ){
+                                enqueue(&queue,r,c+1);
+                                MAZE[r][c+1].DIST=MAZE[r][c].DIST+1 ;
+                        }
+                        if((c>0)&&(!MAZE[r][c].WEST_WALL)&&(MAZE[r][c-1].DIST==INF) ){
+                                enqueue(&queue,r,c-1);
+                                MAZE[r][c-1].DIST=MAZE[r][c].DIST+1 ;
+                        }
+                        dequeue(&queue);
 
+                }
+                else{
+                        break;
+                }
+        }
 }
 
 
@@ -124,7 +144,7 @@ void wall_check(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH],int row,int col,char directio
                                 break;
                         case 'e':
                                 MAZE[row][col].EAST_WALL=true;
-                                if (row < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
+                                if (col < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
                                 API_setWall(col,row,'e');
                                 break;
 		}
@@ -148,7 +168,7 @@ void wall_check(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH],int row,int col,char directio
                                 break;
                         case 's':
                                 MAZE[row][col].EAST_WALL=true;
-                                if (row < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
+                                if (col < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
                                 API_setWall(col,row,'e');
                                 break;
                 }
@@ -172,7 +192,7 @@ void wall_check(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH],int row,int col,char directio
                                 break;
                         case 'n':
                                 MAZE[row][col].EAST_WALL=true;
-                                if (row < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
+                                if (col < MAZE_WIDTH-1) MAZE[row][col+1].WEST_WALL = true;
                                 API_setWall(col,row,'e');
                                 break;
                 }
@@ -257,63 +277,12 @@ void move_one(int* CURRENT_ROW, int* CURRENT_COL,char direction,CELL MAZE[MAZE_H
 
 int main(){
 	CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH];
-	int CURRENT_ROW=START_ROW;
-	int CURRENT_COL=START_COL;
-	char CURRENT_DIRECTION=START_DIRECTION;
-	for(int i=0; i<MAZE_HEIGHT; i++){
-               for(int j=0; j<MAZE_WIDTH; j++){
-                      MAZE[i][j].NORTH_WALL = false;
-                      MAZE[i][j].SOUTH_WALL = false;
-                      MAZE[i][j].WEST_WALL = false;
-                      MAZE[i][j].EAST_WALL = false;
-               }
-        }
+	position_MAZE_init(MAZE);
 
 	while(true){
 	wall_check(MAZE,CURRENT_ROW,CURRENT_COL,CURRENT_DIRECTION);
-	MAZE[TARGET_ROW][TARGET_COL].DIST=0;
 
-
-        for(int i=0;i<MAZE_HEIGHT;i++){
-                for(int j=0;j<MAZE_WIDTH;j++){
-                        if((i==TARGET_ROW)&&(j==TARGET_COL)){   //assigning inf to everything else not visited
-                                continue;
-                        }
-                        MAZE[i][j].DIST=INF;
-                }
-        }
-
-        QUEUE* head=NULL;
-        QUEUE* tail=NULL;
-        enqueue(&head,&tail,TARGET_ROW,TARGET_COL);
-
-        while(true){
-                if(head!=NULL){
-                        assert(MAZE[head->ROW][head->COL].DIST!=INF);
-                        if((head->ROW<MAZE_HEIGHT-1)&&(!MAZE[head->ROW][head->COL].NORTH_WALL)&&(MAZE[head->ROW+1][head->COL].DIST==INF) ){
-                                enqueue(&head,&tail,head->ROW+1,head->COL);
-                                MAZE[head->ROW+1][head->COL].DIST=MAZE[head->ROW][head->COL].DIST+1;
-                        }
-                        if((head->ROW>0)&&(!MAZE[head->ROW][head->COL].SOUTH_WALL)&&(MAZE[head->ROW-1][head->COL].DIST==INF) ){
-                                enqueue(&head,&tail,head->ROW-1,head->COL);
-                                MAZE[head->ROW-1][head->COL].DIST=MAZE[head->ROW][head->COL].DIST+1;
-                        }
-                        if((head->COL<MAZE_WIDTH-1)&&(!MAZE[head->ROW][head->COL].EAST_WALL)&&(MAZE[head->ROW][head->COL+1].DIST==INF) ){
-                                enqueue(&head,&tail,head->ROW,head->COL+1);
-                                MAZE[head->ROW][head->COL+1].DIST=MAZE[head->ROW][head->COL].DIST+1;
-                        }
-                        if((head->COL>0)&&(!MAZE[head->ROW][head->COL].WEST_WALL)&&(MAZE[head->ROW][head->COL-1].DIST==INF) ){
-                                enqueue(&head,&tail,head->ROW,head->COL-1);
-                                MAZE[head->ROW][head->COL-1].DIST=MAZE[head->ROW][head->COL].DIST+1;
-                        }
-
-                        dequeue(&head,&tail);
-
-                }
-                else{
-                        break;
-                }
-        }
+	floodfill(MAZE);
 
 	// Visualization Loop
         char buffer[5]; // Buffer for up to 4 digits + null
