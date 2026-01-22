@@ -6,9 +6,9 @@
 
 #define INF 999
 #define MAX_SIZE 256
+#define MAZE_HEIGHT 16
+#define MAZE_WIDTH 16
 
-int MAZE_HEIGHT=16;
-int MAZE_WIDTH=16;
 int TARGET_ROW=7;      //target cell -1 because of array indexing
 int TARGET_COL=7;
 int START_ROW=0;
@@ -94,9 +94,9 @@ void floodfill(CELL MAZE[MAZE_HEIGHT][MAZE_WIDTH]){
 	int c;
 	enqueue(&queue,TARGET_ROW,TARGET_COL);
         while(true){
-		r=queue.array[queue.head].row;
-		c=queue.array[queue.head].col;
                 if(queue.size!=0){
+			r=queue.array[queue.head].row;
+			c=queue.array[queue.head].col;
                         assert(MAZE[r][c].DIST!=INF);
                         if((r<MAZE_HEIGHT-1)&&(!MAZE[r][c].NORTH_WALL)&&(MAZE[r+1][c].DIST==INF) ){
                                 enqueue(&queue,r+1,c);
@@ -302,6 +302,9 @@ int main(){
 
 	turn(CURRENT_ROW,CURRENT_COL,&CURRENT_DIRECTION,MAZE);
 	move_one(&CURRENT_ROW,&CURRENT_COL,CURRENT_DIRECTION,MAZE);
+	if(TARGET_COL==CURRENT_COL && TARGET_ROW==CURRENT_ROW){
+		break;
+	}
 	}
 	return 0;
 }
